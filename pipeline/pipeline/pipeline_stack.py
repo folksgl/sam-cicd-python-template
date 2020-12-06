@@ -48,7 +48,7 @@ class PipelineStack(core.Stack):
                 value=artifact_bucket.bucket_name,
                 type=codebuild.BuildEnvironmentVariableType.PLAINTEXT
             )},
-            environment=codebuild.LinuxBuildImage.STANDARD_4_0
+            environment=codebuild.LinuxBuildImage.STANDARD_3_0
         )
         build_action = pipeline_actions.CodeBuildAction(
             action_name="Build",
