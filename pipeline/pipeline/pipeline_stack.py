@@ -15,17 +15,14 @@ class PipelineStack(core.Stack):
 
         # The code that defines your stack goes here
 
-        # Define the 'source' stage
         pipeline = codepipeline.Pipeline(self, "Pipeline",
             artifact_bucket=s3.Bucket(self, "ArtifactBucket")
         )
-        source_output = codepipeline.Artifact("SourceOutput")
 
-        # Get the CodeStar Connection ARN from secrets manager
-
-        # Set up the pipeline to be triggered by a webhook on the GitHub repo
-        # for the code. Don't be fooled by the name, it's just a codestar
+        # Define the 'source' stage to be triggered by a webhook on the GitHub
+        # repo for the code. Don't be fooled by the name, it's just a codestar
         # connection in the background. Bitbucket isn't involved.
+        source_output = codepipeline.Artifact("SourceOutput")
         github_source = pipeline_actions.BitBucketSourceAction(
             action_name="Github_Source",
             connection_arn=core.SecretValue.secrets_manager(
@@ -40,10 +37,11 @@ class PipelineStack(core.Stack):
         pipeline.add_stage(stage_name="Source", actions=[github_source])
 
         # Define the 'build' stage
-        build_stage_output = codepipeline.Artifact("BuildStageOutput")
         build_project = codebuild.PipelineProject(
             scope=self,
             id="Build",
+            # Declare the pipeline artifact bucket name as an environment variable
+            # so the build can send the deployment package to it.
             environment_variables={"PACKAGE_BUCKET": codebuild.BuildEnvironmentVariable(
                 value=pipeline.artifact_bucket.bucket_name,
                 type=codebuild.BuildEnvironmentVariableType.PLAINTEXT
@@ -52,6 +50,7 @@ class PipelineStack(core.Stack):
                 build_image=codebuild.LinuxBuildImage.STANDARD_3_0
             )
         )
+        build_stage_output = codepipeline.Artifact("BuildStageOutput")
         build_action = pipeline_actions.CodeBuildAction(
             action_name="Build",
             project=build_project,
