@@ -16,22 +16,22 @@ class PipelineStack(core.Stack):
         # The code that defines your stack goes here
 
         # Define the 'source' stage
-        artifact_bucket = s3.Bucket(self, "ArtifactBucket")
-        pipeline = codepipeline.Pipeline(self, "Pipeline", artifact_bucket=artifact_bucket)
+        pipeline = codepipeline.Pipeline(self, "Pipeline",
+            artifact_bucket=s3.Bucket(self, "ArtifactBucket")
+        )
         source_output = codepipeline.Artifact("SourceOutput")
 
         # Get the CodeStar Connection ARN from secrets manager
-        connection_arn = core.SecretValue.secrets_manager(
-            secret_id="folksgl_github_connection_arn",
-            json_field="arn"
-        ).to_string()
 
         # Set up the pipeline to be triggered by a webhook on the GitHub repo
         # for the code. Don't be fooled by the name, it's just a codestar
         # connection in the background. Bitbucket isn't involved.
         github_source = pipeline_actions.BitBucketSourceAction(
             action_name="Github_Source",
-            connection_arn=connection_arn,
+            connection_arn=core.SecretValue.secrets_manager(
+                secret_id="folksgl_github_connection_arn",
+                json_field="arn"
+            ).to_string(),
             repo="sam-cicd-python-template",
             owner="folksgl",
             branch="main",
@@ -45,7 +45,7 @@ class PipelineStack(core.Stack):
             scope=self,
             id="Build",
             environment_variables={"PACKAGE_BUCKET": codebuild.BuildEnvironmentVariable(
-                value=artifact_bucket.bucket_name,
+                value=pipeline.artifact_bucket.bucket_name,
                 type=codebuild.BuildEnvironmentVariableType.PLAINTEXT
             )},
             environment=codebuild.BuildEnvironment(
