@@ -1,5 +1,5 @@
 -e .
-aws-s3==1.76.0
-aws-codepipeline==1.76.0
-aws-codepipeline-actions==1.76.0
-aws-codebuild==1.76.0
+aws-cdk.aws-s3
+aws-cdk.aws-codepipeline
+aws-cdk.aws-codepipeline-actions
+aws-cdk.aws-codebuild
