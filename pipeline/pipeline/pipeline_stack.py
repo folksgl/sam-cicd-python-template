@@ -1,9 +1,10 @@
+""" pipeline_stack.py defines the CI/CD pipeline for an AWS SAM application """
 from aws_cdk import (
     core,
     aws_s3 as s3,
     aws_codepipeline as codepipeline,
     aws_codepipeline_actions as pipeline_actions,
-    aws_codebuild as codebuild
+    aws_codebuild as codebuild,
 )
 
 
@@ -15,8 +16,8 @@ class PipelineStack(core.Stack):
 
         # The code that defines your stack goes here
 
-        pipeline = codepipeline.Pipeline(self, "Pipeline",
-            artifact_bucket=s3.Bucket(self, "ArtifactBucket")
+        pipeline = codepipeline.Pipeline(
+            self, "Pipeline", artifact_bucket=s3.Bucket(self, "ArtifactBucket")
         )
 
         # Define the 'source' stage to be triggered by a webhook on the GitHub
@@ -26,13 +27,12 @@ class PipelineStack(core.Stack):
         github_source = pipeline_actions.BitBucketSourceAction(
             action_name="Github_Source",
             connection_arn=core.SecretValue.secrets_manager(
-                secret_id="folksgl_github_connection_arn",
-                json_field="arn"
+                secret_id="folksgl_github_connection_arn", json_field="arn"
             ).to_string(),
             repo="sam-cicd-python-template",
             owner="folksgl",
             branch="main",
-            output=source_output
+            output=source_output,
         )
         pipeline.add_stage(stage_name="Source", actions=[github_source])
 
@@ -42,20 +42,22 @@ class PipelineStack(core.Stack):
             id="Build",
             # Declare the pipeline artifact bucket name as an environment variable
             # so the build can send the deployment package to it.
-            environment_variables={"PACKAGE_BUCKET": codebuild.BuildEnvironmentVariable(
-                value=pipeline.artifact_bucket.bucket_name,
-                type=codebuild.BuildEnvironmentVariableType.PLAINTEXT
-            )},
+            environment_variables={
+                "PACKAGE_BUCKET": codebuild.BuildEnvironmentVariable(
+                    value=pipeline.artifact_bucket.bucket_name,
+                    type=codebuild.BuildEnvironmentVariableType.PLAINTEXT,
+                )
+            },
             environment=codebuild.BuildEnvironment(
                 build_image=codebuild.LinuxBuildImage.STANDARD_3_0
-            )
+            ),
         )
         build_stage_output = codepipeline.Artifact("BuildStageOutput")
         build_action = pipeline_actions.CodeBuildAction(
             action_name="Build",
             project=build_project,
             input=source_output,
-            outputs=[build_stage_output]
+            outputs=[build_stage_output],
         )
         pipeline.add_stage(stage_name="Build", actions=[build_action])
 
@@ -69,15 +71,14 @@ class PipelineStack(core.Stack):
             change_set_name=change_set_name,
             template_path=build_stage_output.at_path("packaged.yaml"),
             admin_permissions=True,
-            run_order=1
+            run_order=1,
         )
         execute_change_set = pipeline_actions.CloudFormationExecuteChangeSetAction(
             action_name="Deploy",
             stack_name=stack_name,
             change_set_name=change_set_name,
-            run_order=2
+            run_order=2,
         )
         pipeline.add_stage(
-            stage_name="DevDeployment",
-            actions=[create_change_set, execute_change_set]
+            stage_name="DevDeployment", actions=[create_change_set, execute_change_set]
         )
